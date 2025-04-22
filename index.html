@@ -1,0 +1,729 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistem Produktivitas Perkebunan</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/chart.js@3.7.1/dist/chart.min.css" rel="stylesheet">
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+        main {
+            flex: 1;
+        }
+        .table-responsive {
+            overflow-x: auto;
+        }
+        @media (max-width: 768px) {
+            .table-responsive {
+                font-size: 0.9rem;
+            }
+            .table th, .table td {
+                padding: 0.5rem;
+            }
+        }
+        .card {
+            box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+        }
+        .login-container {
+            max-width: 400px;
+            margin: 0 auto;
+            margin-top: 5rem;
+        }
+        .mandor-type-btn {
+            height: 100px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+        }
+        .chart-container {
+            position: relative;
+            height: 300px;
+            width: 100%;
+        }
+    </style>
+</head>
+<body>
+    <!-- Aplikasi Utama -->
+    <div id="app" style="display: none;">
+        <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+            <div class="container">
+                <a class="navbar-brand" href="#" onclick="showDashboard()">Sistem Perkebunan</a>
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+                <div class="collapse navbar-collapse" id="navbarNav">
+                    <ul class="navbar-nav me-auto" id="mainMenu">
+                        <!-- Menu akan diisi oleh JavaScript -->
+                    </ul>
+                    <ul class="navbar-nav">
+                        <li class="nav-item">
+                            <a class="nav-link" href="#" onclick="logout()">Logout</a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </nav>
+
+        <main class="container py-4">
+            <div id="contentArea"></div>
+        </main>
+
+        <footer class="bg-dark text-white py-3">
+            <div class="container text-center">
+                <p class="mb-0">Sistem Produktivitas Perkebunan &copy; <span id="currentYear"></span></p>
+            </div>
+        </footer>
+    </div>
+
+    <!-- Form Login -->
+    <div id="loginForm" class="login-container">
+        <div class="card shadow">
+            <div class="card-body p-4">
+                <h3 class="card-title text-center mb-4">Login Sistem</h3>
+                <div class="alert alert-danger" id="loginError" style="display: none;"></div>
+                <form id="loginFormElement">
+                    <div class="mb-3">
+                        <label class="form-label">Username</label>
+                        <input type="text" class="form-control" id="username" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Password</label>
+                        <input type="password" class="form-control" id="password" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100">Login</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Template Halaman -->
+    <template id="dashboardTemplate">
+        <h2 class="my-4">Dashboard</h2>
+        <div class="alert alert-info">
+            Selamat datang! Silakan pilih menu di atas untuk mulai bekerja.
+        </div>
+    </template>
+
+    <template id="mandorDashboardTemplate">
+        <h2 class="my-4">Menu Mandor</h2>
+        <div class="row">
+            <div class="col-md-6 mb-4">
+                <button class="btn btn-primary w-100 mandor-type-btn" onclick="showInputPanen()">
+                    Input Data Panen
+                </button>
+            </div>
+            <div class="col-md-6 mb-4">
+                <button class="btn btn-success w-100 mandor-type-btn" onclick="showInputAngkut()">
+                    Input Data Angkut
+                </button>
+            </div>
+        </div>
+    </template>
+
+    <template id="inputPanenTemplate">
+        <h2 class="my-4">Input Data Panen Harian</h2>
+        <div class="alert alert-success" id="panenSuccess" style="display: none;"></div>
+        <div class="alert alert-danger" id="panenError" style="display: none;"></div>
+        <form id="inputPanenForm">
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label class="form-label">Tanggal Pencatatan</label>
+                    <input type="date" class="form-control" id="tanggalPanen" required>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Blok Kebun yang Dipanen</label>
+                    <input type="text" class="form-control" id="blokKebun" required>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Jumlah Hasil Panen (kg)</label>
+                    <input type="number" step="0.01" class="form-control" id="hasilPanen" required>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Berat Janjang Rata-Rata (kg)</label>
+                    <input type="number" step="0.01" class="form-control" id="beratJanjang" required>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Jumlah Pekerja yang Terlibat</label>
+                    <input type="number" class="form-control" id="jumlahPekerja" required>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Jam Kerja Harian</label>
+                    <input type="number" step="0.1" class="form-control" id="jamKerja" required>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Kondisi Cuaca Saat Panen</label>
+                    <select class="form-select" id="cuaca" required>
+                        <option value="Cerah">Cerah</option>
+                        <option value="Berawan">Berawan</option>
+                        <option value="Hujan Ringan">Hujan Ringan</option>
+                        <option value="Hujan Lebat">Hujan Lebat</option>
+                        <option value="Berkabut">Berkabut</option>
+                    </select>
+                </div>
+                <div class="col-12">
+                    <label class="form-label">Catatan Tambahan</label>
+                    <textarea class="form-control" id="catatanPanen" rows="3"></textarea>
+                </div>
+                <div class="col-12">
+                    <button type="submit" class="btn btn-primary">Simpan Data</button>
+                </div>
+            </div>
+        </form>
+    </template>
+
+    <template id="inputAngkutTemplate">
+        <h2 class="my-4">Input Data Angkut Harian</h2>
+        <div class="alert alert-success" id="angkutSuccess" style="display: none;"></div>
+        <div class="alert alert-danger" id="angkutError" style="display: none;"></div>
+        <form id="inputAngkutForm">
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label class="form-label">Tanggal Pencatatan</label>
+                    <input type="date" class="form-control" id="tanggalAngkut" required>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Jumlah TBS yang Diangkut</label>
+                    <input type="number" class="form-control" id="jumlahTBS" required>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Waktu Keberangkatan</label>
+                    <input type="time" class="form-control" id="waktuBerangkat" required>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Waktu Kedatangan</label>
+                    <input type="time" class="form-control" id="waktuTiba" required>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Plat Nomor Mobil</label>
+                    <input type="text" class="form-control" id="platMobil" required>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Data Kehilangan/Tertinggal (kg)</label>
+                    <input type="number" step="0.01" class="form-control" id="kehilangan" value="0">
+                </div>
+                <div class="col-12">
+                    <label class="form-label">Kendala Transportasi</label>
+                    <select class="form-select" id="kendala">
+                        <option value="Tidak Ada">Tidak Ada</option>
+                        <option value="Jalan Rusak">Jalan Rusak</option>
+                        <option value="Keterlambatan">Keterlambatan</option>
+                        <option value="Kendaraan Bermasalah">Kendaraan Bermasalah</option>
+                        <option value="Lainnya">Lainnya</option>
+                    </select>
+                </div>
+                <div class="col-12">
+                    <label class="form-label">Catatan Tambahan</label>
+                    <textarea class="form-control" id="catatanAngkut" rows="3"></textarea>
+                </div>
+                <div class="col-12">
+                    <button type="submit" class="btn btn-primary">Simpan Data</button>
+                </div>
+            </div>
+        </form>
+    </template>
+
+    <template id="manajemenOverviewTemplate">
+        <h2 class="my-4">Overview Semua Data</h2>
+        <ul class="nav nav-tabs" id="overviewTab" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="overview-panen-tab" data-bs-toggle="tab" data-bs-target="#overviewPanenTab" type="button" role="tab">Data Panen</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="overview-angkut-tab" data-bs-toggle="tab" data-bs-target="#overviewAngkutTab" type="button" role="tab">Data Angkut</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="overview-rekap-tab" data-bs-toggle="tab" data-bs-target="#overviewRekapTab" type="button" role="tab">Rekap Data</button>
+            </li>
+        </ul>
+        <div class="tab-content" id="overviewTabContent">
+            <div class="tab-pane fade show active" id="overviewPanenTab" role="tabpanel">
+                <div class="table-responsive mt-3">
+                    <table class="table table-striped table-hover">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>Tanggal</th>
+                                <th>Mandor</th>
+                                <th>Blok Kebun</th>
+                                <th>Hasil Panen (kg)</th>
+                                <th>Produktivitas</th>
+                                <th>Pekerja</th>
+                                <th>Jam Kerja</th>
+                                <th>Cuaca</th>
+                            </tr>
+                        </thead>
+                        <tbody id="overviewPanenTableBody"></tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="tab-pane fade" id="overviewAngkutTab" role="tabpanel">
+                <div class="table-responsive mt-3">
+                    <table class="table table-striped table-hover">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>Tanggal</th>
+                                <th>Mandor</th>
+                                <th>Jumlah TBS</th>
+                                <th>Waktu</th>
+                                <th>Plat Mobil</th>
+                                <th>Kendala</th>
+                                <th>Kehilangan</th>
+                            </tr>
+                        </thead>
+                        <tbody id="overviewAngkutTableBody"></tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="tab-pane fade" id="overviewRekapTab" role="tabpanel">
+                <div class="table-responsive mt-3">
+                    <table class="table table-striped table-hover">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>Tanggal</th>
+                                <th>Mandor</th>
+                                <th>Blok Kebun</th>
+                                <th>Hasil Panen (kg)</th>
+                                <th>Jumlah TBS</th>
+                                <th>Produktivitas</th>
+                            </tr>
+                        </thead>
+                        <tbody id="overviewRekapTableBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </template>
+
+    <template id="manajemenAnalisisTemplate">
+        <h2 class="my-4">Analisis Produktivitas</h2>
+        <div class="row">
+            <div class="col-md-8">
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5>Rata-rata Produktivitas Panen (30 Hari Terakhir)</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="chart-container">
+                            <canvas id="produktivitasChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5>Statistik Cepat</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <h6>Total Panen Bulan Ini</h6>
+                            <h4 id="totalPanenBulanIni">0 kg</h4>
+                        </div>
+                        <div class="mb-3">
+                            <h6>Rata-rata Produktivitas</h6>
+                            <h4 id="rataProduktivitas">0 kg/jam/orang</h4>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </template>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.1/dist/chart.min.js"></script>
+    <script>
+        // Variabel global
+        let currentUser = null;
+        let produktivitasChart = null;
+        const dataPanen = [];
+        const dataAngkut = [];
+
+        // Fungsi untuk menghitung produktivitas
+        function calculateProductivity(hasilPanen, jamKerja, jumlahPekerja) {
+            if (jamKerja > 0 && jumlahPekerja > 0) {
+                return parseFloat((hasilPanen / (jamKerja * jumlahPekerja)).toFixed(2));
+            }
+            return 0;
+        }
+
+        // Fungsi untuk memformat tanggal
+        function formatDate(dateString) {
+            const date = new Date(dateString);
+            return date.toLocaleDateString('id-ID');
+        }
+
+        // Fungsi untuk memformat waktu (HH:MM)
+        function formatTime(timeString) {
+            return timeString.substring(0, 5);
+        }
+
+        // Fungsi untuk mendapatkan nama mandor
+        function getMandorName(mandorId) {
+            return `Mandor ${mandorId}`;
+        }
+
+        // Fungsi untuk login
+        function login(username, password) {
+            // Di implementasi nyata, ini akan request ke server
+            currentUser = {
+                id: username === 'manager' ? 1 : 2,
+                username: username,
+                role: username === 'manager' ? 'manajemen' : 'mandor'
+            };
+            
+            document.getElementById('loginForm').style.display = 'none';
+            document.getElementById('app').style.display = 'block';
+            initializeApp();
+            return true;
+        }
+
+        // Fungsi untuk logout
+        function logout() {
+            currentUser = null;
+            document.getElementById('loginForm').style.display = 'block';
+            document.getElementById('app').style.display = 'none';
+            document.getElementById('loginFormElement').reset();
+            document.getElementById('loginError').style.display = 'none';
+        }
+
+        // Fungsi untuk inisialisasi aplikasi setelah login
+        function initializeApp() {
+            document.getElementById('currentYear').textContent = new Date().getFullYear();
+            
+            const mainMenu = document.getElementById('mainMenu');
+            mainMenu.innerHTML = '';
+            
+            if (currentUser.role === 'mandor') {
+                mainMenu.innerHTML = `
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" onclick="showMandorDashboard()">Menu Mandor</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" onclick="showInputPanen()">Input Panen</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" onclick="showInputAngkut()">Input Angkut</a>
+                    </li>
+                `;
+                showMandorDashboard();
+            } else if (currentUser.role === 'manajemen') {
+                mainMenu.innerHTML = `
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" onclick="showManajemenOverview()">Overview</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" onclick="showManajemenAnalisis()">Analisis</a>
+                    </li>
+                `;
+                showManajemenOverview();
+            }
+            
+            const today = new Date().toISOString().split('T')[0];
+            if (document.getElementById('tanggalPanen')) {
+                document.getElementById('tanggalPanen').value = today;
+            }
+            if (document.getElementById('tanggalAngkut')) {
+                document.getElementById('tanggalAngkut').value = today;
+            }
+        }
+
+        // Fungsi untuk menampilkan dashboard mandor
+        function showMandorDashboard() {
+            const contentArea = document.getElementById('contentArea');
+            const template = document.getElementById('mandorDashboardTemplate').content.cloneNode(true);
+            contentArea.innerHTML = '';
+            contentArea.appendChild(template);
+        }
+
+        // Fungsi untuk menampilkan form input panen
+        function showInputPanen() {
+            const contentArea = document.getElementById('contentArea');
+            const template = document.getElementById('inputPanenTemplate').content.cloneNode(true);
+            contentArea.innerHTML = '';
+            contentArea.appendChild(template);
+            
+            document.getElementById('tanggalPanen').value = new Date().toISOString().split('T')[0];
+            
+            document.getElementById('inputPanenForm').addEventListener('submit', function(e) {
+                e.preventDefault();
+                
+                const formData = {
+                    tanggal: document.getElementById('tanggalPanen').value,
+                    blok_kebun: document.getElementById('blokKebun').value,
+                    hasil_panen: parseFloat(document.getElementById('hasilPanen').value),
+                    berat_janjang: parseFloat(document.getElementById('beratJanjang').value),
+                    jumlah_pekerja: parseInt(document.getElementById('jumlahPekerja').value),
+                    jam_kerja: parseFloat(document.getElementById('jamKerja').value),
+                    cuaca: document.getElementById('cuaca').value,
+                    catatan: document.getElementById('catatanPanen').value,
+                    mandor_id: currentUser.id,
+                    produktivitas: calculateProductivity(
+                        parseFloat(document.getElementById('hasilPanen').value),
+                        parseFloat(document.getElementById('jamKerja').value),
+                        parseInt(document.getElementById('jumlahPekerja').value)
+                    )
+                };
+                
+                dataPanen.push({
+                    id: dataPanen.length + 1,
+                    ...formData
+                });
+                
+                document.getElementById('panenSuccess').textContent = 'Data panen berhasil disimpan';
+                document.getElementById('panenSuccess').style.display = 'block';
+                document.getElementById('panenError').style.display = 'none';
+                
+                document.getElementById('inputPanenForm').reset();
+                document.getElementById('tanggalPanen').value = new Date().toISOString().split('T')[0];
+            });
+        }
+
+        // Fungsi untuk menampilkan form input angkut
+        function showInputAngkut() {
+            const contentArea = document.getElementById('contentArea');
+            const template = document.getElementById('inputAngkutTemplate').content.cloneNode(true);
+            contentArea.innerHTML = '';
+            contentArea.appendChild(template);
+            
+            document.getElementById('tanggalAngkut').value = new Date().toISOString().split('T')[0];
+            
+            document.getElementById('inputAngkutForm').addEventListener('submit', function(e) {
+                e.preventDefault();
+                
+                const formData = {
+                    tanggal: document.getElementById('tanggalAngkut').value,
+                    jumlah_tbs: parseInt(document.getElementById('jumlahTBS').value),
+                    waktu_berangkat: document.getElementById('waktuBerangkat').value + ':00',
+                    waktu_tiba: document.getElementById('waktuTiba').value + ':00',
+                    plat_mobil: document.getElementById('platMobil').value,
+                    kendala: document.getElementById('kendala').value,
+                    kehilangan: parseFloat(document.getElementById('kehilangan').value || 0),
+                    catatan: document.getElementById('catatanAngkut').value,
+                    mandor_id: currentUser.id
+                };
+                
+                dataAngkut.push({
+                    id: dataAngkut.length + 1,
+                    ...formData
+                });
+                
+                document.getElementById('angkutSuccess').textContent = 'Data angkut berhasil disimpan';
+                document.getElementById('angkutSuccess').style.display = 'block';
+                document.getElementById('angkutError').style.display = 'none';
+                
+                document.getElementById('inputAngkutForm').reset();
+                document.getElementById('tanggalAngkut').value = new Date().toISOString().split('T')[0];
+            });
+        }
+
+        // Fungsi untuk menampilkan overview manajemen
+        function showManajemenOverview() {
+            const contentArea = document.getElementById('contentArea');
+            const template = document.getElementById('manajemenOverviewTemplate').content.cloneNode(true);
+            contentArea.innerHTML = '';
+            contentArea.appendChild(template);
+            
+            // Isi tabel panen
+            const panenTableBody = document.getElementById('overviewPanenTableBody');
+            panenTableBody.innerHTML = '';
+            
+            dataPanen.forEach(item => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${formatDate(item.tanggal)}</td>
+                    <td>${getMandorName(item.mandor_id)}</td>
+                    <td>${item.blok_kebun}</td>
+                    <td>${item.hasil_panen.toFixed(2)}</td>
+                    <td>${item.produktivitas.toFixed(2)} kg/jam/orang</td>
+                    <td>${item.jumlah_pekerja}</td>
+                    <td>${item.jam_kerja.toFixed(1)} jam</td>
+                    <td>${item.cuaca}</td>
+                `;
+                panenTableBody.appendChild(row);
+            });
+            
+            // Isi tabel angkut
+            const angkutTableBody = document.getElementById('overviewAngkutTableBody');
+            angkutTableBody.innerHTML = '';
+            
+            dataAngkut.forEach(item => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${formatDate(item.tanggal)}</td>
+                    <td>${getMandorName(item.mandor_id)}</td>
+                    <td>${item.jumlah_tbs}</td>
+                    <td>${formatTime(item.waktu_berangkat)} - ${formatTime(item.waktu_tiba)}</td>
+                    <td>${item.plat_mobil}</td>
+                    <td>${item.kendala}</td>
+                    <td>${item.kehilangan.toFixed(2)} kg</td>
+                `;
+                angkutTableBody.appendChild(row);
+            });
+            
+            // Isi tabel rekap
+            const rekapTableBody = document.getElementById('overviewRekapTableBody');
+            rekapTableBody.innerHTML = '';
+            
+            // Gabungkan data panen dan angkut untuk rekap
+            const rekapData = [];
+            
+            dataPanen.forEach(panen => {
+                const angkut = dataAngkut.find(a => 
+                    a.tanggal === panen.tanggal && a.mandor_id === panen.mandor_id
+                );
+                
+                rekapData.push({
+                    tanggal: panen.tanggal,
+                    mandor_id: panen.mandor_id,
+                    blok_kebun: panen.blok_kebun,
+                    hasil_panen: panen.hasil_panen,
+                    jumlah_tbs: angkut ? angkut.jumlah_tbs : 0,
+                    produktivitas: panen.produktivitas
+                });
+            });
+            
+            rekapData.forEach(item => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${formatDate(item.tanggal)}</td>
+                    <td>${getMandorName(item.mandor_id)}</td>
+                    <td>${item.blok_kebun}</td>
+                    <td>${item.hasil_panen.toFixed(2)}</td>
+                    <td>${item.jumlah_tbs}</td>
+                    <td>${item.produktivitas.toFixed(2)} kg/jam/orang</td>
+                `;
+                rekapTableBody.appendChild(row);
+            });
+        }
+
+        // Fungsi untuk menampilkan analisis manajemen
+        function showManajemenAnalisis() {
+            const contentArea = document.getElementById('contentArea');
+            const template = document.getElementById('manajemenAnalisisTemplate').content.cloneNode(true);
+            contentArea.innerHTML = '';
+            contentArea.appendChild(template);
+            
+            // Hitung statistik
+            const currentMonth = new Date().getMonth() + 1;
+            const currentYear = new Date().getFullYear();
+            
+            const totalPanen = dataPanen
+                .filter(item => {
+                    const date = new Date(item.tanggal);
+                    return date.getMonth() + 1 === currentMonth && date.getFullYear() === currentYear;
+                })
+                .reduce((sum, item) => sum + item.hasil_panen, 0);
+            
+            const avgProduktivitas = dataPanen
+                .filter(item => {
+                    const date = new Date(item.tanggal);
+                    return date.getMonth() + 1 === currentMonth && date.getFullYear() === currentYear;
+                })
+                .reduce((sum, item, index, array) => {
+                    if (index === array.length - 1) {
+                        return (sum + item.produktivitas) / array.length;
+                    }
+                    return sum + item.produktivitas;
+                }, 0);
+            
+            document.getElementById('totalPanenBulanIni').textContent = totalPanen.toFixed(2) + ' kg';
+            document.getElementById('rataProduktivitas').textContent = avgProduktivitas.toFixed(2) + ' kg/jam/orang';
+            
+            // Buat grafik produktivitas
+            const mandorProduktivitas = {};
+            
+            dataPanen.forEach(item => {
+                const date = new Date(item.tanggal);
+                const thirtyDaysAgo = new Date();
+                thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+                
+                if (date >= thirtyDaysAgo) {
+                    const mandorId = item.mandor_id;
+                    if (!mandorProduktivitas[mandorId]) {
+                        mandorProduktivitas[mandorId] = {
+                            total: 0,
+                            count: 0
+                        };
+                    }
+                    mandorProduktivitas[mandorId].total += item.produktivitas;
+                    mandorProduktivitas[mandorId].count++;
+                }
+            });
+            
+            const labels = [];
+            const data = [];
+            
+            for (const [mandorId, values] of Object.entries(mandorProduktivitas)) {
+                labels.push(getMandorName(parseInt(mandorId)));
+                data.push(parseFloat((values.total / values.count).toFixed(2)));
+            }
+            
+            const ctx = document.getElementById('produktivitasChart').getContext('2d');
+            
+            if (produktivitasChart) {
+                produktivitasChart.destroy();
+            }
+            
+            produktivitasChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Produktivitas (kg/jam/orang)',
+                        data: data,
+                        backgroundColor: 'rgba(54, 162, 235, 0.7)',
+                        borderColor: 'rgba(54, 162, 235, 1)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'kg/jam/orang'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Event listener untuk form login
+        document.getElementById('loginFormElement').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            
+            if (login(username, password)) {
+                document.getElementById('loginError').style.display = 'none';
+            } else {
+                document.getElementById('loginError').textContent = 'Username atau password salah';
+                document.getElementById('loginError').style.display = 'block';
+            }
+        });
+
+        // Inisialisasi saat halaman dimuat
+        document.addEventListener('DOMContentLoaded', function() {
+            document.getElementById('app').style.display = 'none';
+            
+            const today = new Date().toISOString().split('T')[0];
+            if (document.getElementById('tanggalPanen')) {
+                document.getElementById('tanggalPanen').value = today;
+            }
+            if (document.getElementById('tanggalAngkut')) {
+                document.getElementById('tanggalAngkut').value = today;
+            }
+        });
+    </script>
+</body>
+</html>
